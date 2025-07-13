@@ -1,11 +1,17 @@
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
+from admin import show_admin_page
 
 st.set_page_config(page_title="The Reflective Room", layout="centered")
 
 st.title("🪞 The Reflective Room")
 st.markdown("Submit your poem below and be part of our weekly reflections.")
+
+st.sidebar.title("🪞 The Reflective Room")
+page = st.sidebar.selectbox("Go to", ["Submit Poem", "Admin View"])
+
+
 
 # Google Sheets setup using Streamlit secrets
 scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
