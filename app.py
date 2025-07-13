@@ -35,6 +35,8 @@ try:
         worksheet = spreadsheet.worksheet(target_title)
 
         st.markdown("### 📬 Submit Your Poem")
+        st.info(f"📚 Total poems submitted: {len(worksheet.get_all_values()) - 1}")
+
 
         with st.form(key="poem_form"):
             name = st.text_input("Your Name")
