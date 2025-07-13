@@ -6,18 +6,17 @@ import pandas as pd
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
 
-# ---------- Logo Display ----------
+# ---------- Title with Logo ----------
 st.markdown(
     """
-    <div style='text-align: center; padding-bottom: 10px;'>
-        <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='160'>
+    <div style='display: flex; align-items: center; gap: 10px; justify-content: center; padding-bottom: 10px;'>
+        <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='48'>
+        <h1 style='margin: 0;'>The Reflective Room</h1>
     </div>
     """,
     unsafe_allow_html=True
 )
 
-# ---------- Title ----------
-st.title("🪞 The Reflective Room")
 st.markdown("Submit your poem below and be part of our weekly reflections.")
 
 # ---------- Google Sheets Setup ----------
