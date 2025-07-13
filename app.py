@@ -1,41 +1,46 @@
+# v1.2 – Timestamp patch added to force GitHub refresh
 
 import streamlit as st
+import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# Config
-st.set_page_config(page_title="The Reflective Room - Debug", layout="centered")
+# Title and subtitle
+st.set_page_config(page_title="The Reflective Room", layout="centered")
+st.title("🪞 The Reflective Room")
+st.subheader("Submit your poem below and be part of our weekly reflections.")
 
-# Connect to Google Sheets
-scope = ["https://www.googleapis.com/auth/spreadsheets", 
+# Authenticate with Google Sheets
+scope = ["https://www.googleapis.com/auth/spreadsheets",
          "https://www.googleapis.com/auth/drive"]
-
 creds_dict = st.secrets["gcp_service_account"]
 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 
-st.title("🪞 The Reflective Room — Debug Mode")
-st.subheader("📋 Verifying Google Sheets Access (via URL)")
-
-# Try listing all accessible spreadsheets
+# Open the target Google Sheet by name
+SHEET_NAME = "The Reflective Room Submissions"
 try:
-    st.markdown("### 📚 Sheets visible to the service account:")
-    sheet_list = client.openall()
-    if sheet_list:
-        for sheet in sheet_list:
-            st.write("✅", sheet.title)
-    else:
-        st.warning("⚠️ No sheets found — double check sharing & permissions.")
+    sheet = client.open(SHEET_NAME).sheet1
 except Exception as e:
-    st.error(f"❌ Error listing sheets: {e}")
+    st.error(f"Could not open Google Sheet: {e}")
+    st.stop()
 
-# Manual test to access sheet via URL
-st.markdown("### 🔍 Manual Sheet Access by URL")
-try:
-    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1kfAXeG867wu1f8sIKkGPG6wnFD2VSjxG/edit").sheet1
-    st.success("✅ Successfully accessed the sheet via URL.")
-    data = sheet.get_all_values()
-    st.write("📄 Sheet Content (first 2 rows):", data[:2])
-except Exception as e:
-    st.error(f"❌ Error accessing the sheet by URL: {e}")
+# Submission form
+with st.form("poetry_form"):
+    name = st.text_input("Your Name (Optional)")
+    poem = st.text_area("Your Poem", height=300)
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Harmless timestamp (not used)
+    submit = st.form_submit_button("Submit")
+
+    if submit:
+        if poem.strip() == "":
+            st.warning("Please write a poem before submitting.")
+        else:
+            # Add submission to Google Sheet
+            sheet.append_row([name, poem])
+            st.success("✅ Your poem has been submitted. Thank you!")
+
+# Footer
+st.markdown("---")
+st.caption("🌙 Powered by The Reflective Room · Streamlit App")
