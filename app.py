@@ -40,20 +40,23 @@ try:
     else:
         worksheet = spreadsheet.worksheet(target_title)
 
-        st.markdown("### 📬 Submit Your Poem")
+        if page == "Submit Poem":
+    # your poem submission form code here
+    st.title("📬 Submit Your Poem")
+    with st.form("submission_form"):
+        name = st.text_input("Your Name")
+        poem = st.text_area("Your Poem")
+        submit = st.form_submit_button("Submit")
 
-        with st.form(key="poem_form"):
-            name = st.text_input("Your Name")
-            poem = st.text_area("Your Poem")
-            submit_button = st.form_submit_button(label="Submit")
-
-        if submit_button:
+        if submit:
             if name.strip() == "" or poem.strip() == "":
-                st.warning("Please enter both name and poem.")
+                st.warning("Please fill in both fields.")
             else:
-                try:
-                    worksheet.append_row([name, poem])
-                    st.success("🎉 Poem submitted successfully!")
+                worksheet.append_row([name, poem])
+                st.success("✅ Poem submitted successfully!")
+
+elif page == "Admin View":
+    show_admin_page()
                 except Exception as e:
                     st.error(f"⚠️ Failed to submit poem: {e}")
 
