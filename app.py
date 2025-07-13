@@ -2,21 +2,22 @@
 import streamlit as st
 import pandas as pd
 import gspread
+import json
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # --- CONFIG --- #
 SHEET_URL = "https://docs.google.com/spreadsheets/d/1kfAXeG867wu1f8sIKkGPG6wnFD2VSjxG/edit#gid=0"
-CREDENTIALS_PATH = "the-reflective-room-465806-eb89fa4537c9.json"
 ADMIN_PASSWORD = "reflect123"
 
-# --- AUTH --- #
+# --- AUTH (load from Streamlit secrets) --- #
 scope = ["https://spreadsheets.google.com/feeds",
          "https://www.googleapis.com/auth/spreadsheets",
          "https://www.googleapis.com/auth/drive.file",
          "https://www.googleapis.com/auth/drive"]
 
-creds = Credentials.from_service_account_file(CREDENTIALS_PATH, scopes=scope)
+creds_dict = json.loads(st.secrets["gcp_service_account"])
+creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 sheet = client.open_by_url(SHEET_URL)
 poems_ws = sheet.worksheet("Poems")
@@ -44,7 +45,6 @@ def update_prompt(week, title, desc):
 
 # --- UI --- #
 st.set_page_config(page_title="The Reflective Room", layout="centered")
-
 menu = st.sidebar.selectbox("Navigate", ["Home", "Submit a Poem", "Admin Panel"])
 
 if menu == "Home":
