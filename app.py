@@ -36,6 +36,15 @@ try:
 
         st.markdown("### 📬 Submit Your Poem")
         st.info(f"📚 Total poems submitted: {len(worksheet.get_all_values()) - 1}")
+        records = worksheet.get_all_records()
+
+        import pandas as pd
+        df = pd.DataFrame(records)
+        poet_counts = df['name'].value_counts().reset_index()
+        poet_counts.columns = ['Poet', 'Poems Submitted']
+
+        st.subheader("🧾 Poem Count by Poet")
+        st.dataframe(poet_counts)
 
 
         with st.form(key="poem_form"):
