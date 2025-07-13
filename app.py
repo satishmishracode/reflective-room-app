@@ -1,46 +1,39 @@
-# v1.2 – Timestamp patch added to force GitHub refresh
-
 import streamlit as st
-import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
-from datetime import datetime
 
-# Title and subtitle
-st.set_page_config(page_title="The Reflective Room", layout="centered")
+st.set_page_config(page_title="The Reflective Room", page_icon="🪞")
+
 st.title("🪞 The Reflective Room")
 st.subheader("Submit your poem below and be part of our weekly reflections.")
 
-# Authenticate with Google Sheets
-scope = ["https://www.googleapis.com/auth/spreadsheets",
-         "https://www.googleapis.com/auth/drive"]
+# --- Google Sheets Auth ---
+scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
 creds_dict = st.secrets["gcp_service_account"]
 creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 
-# Open the target Google Sheet by name
-SHEET_NAME = "The Reflective Room Submissions"
+# --- Google Sheet Access ---
+SHEET_ID = "1zIXpgEbipNfaDRdrgR5tSmTxmY-T5Cmyb8T4ojvRk2M"
+WORKSHEET_NAME = "Submissions"
+
 try:
-    sheet = client.open(SHEET_NAME).sheet1
+    sheet = client.open_by_key(SHEET_ID)
+    worksheet = sheet.worksheet(WORKSHEET_NAME)
 except Exception as e:
-    st.error(f"Could not open Google Sheet: {e}")
+    st.error(f"❌ Could not open Google Sheet: {e}")
     st.stop()
 
-# Submission form
-with st.form("poetry_form"):
-    name = st.text_input("Your Name (Optional)")
-    poem = st.text_area("Your Poem", height=300)
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")  # Harmless timestamp (not used)
+# --- Submission Form ---
+with st.form("poem_form"):
+    name = st.text_input("Your Name")
+    instagram = st.text_input("Instagram Handle (optional)")
+    poem = st.text_area("Your Poem", height=200)
     submit = st.form_submit_button("Submit")
 
     if submit:
-        if poem.strip() == "":
-            st.warning("Please write a poem before submitting.")
+        if not name or not poem:
+            st.warning("⚠️ Please fill in both your name and your poem.")
         else:
-            # Add submission to Google Sheet
-            sheet.append_row([name, poem])
-            st.success("✅ Your poem has been submitted. Thank you!")
-
-# Footer
-st.markdown("---")
-st.caption("🌙 Powered by The Reflective Room · Streamlit App")
+            worksheet.append_row([name, instagram, poem])
+            st.success("✅ Your poem has been submitted successfully!")
