@@ -9,7 +9,7 @@ st.set_page_config(page_title="The Reflective Room", layout="centered")
 # ---------- Title with Logo ----------
 st.markdown(
     """
-    <div style='display: flex; align-items: center; gap: 10px; justify-content: center; padding-bottom: 10px;'>
+    <div style='display: flex; align-items: center; gap: 5px; justify-content: center; padding-bottom: 10px;'>
         <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='100'>
         <h1 style='margin: 0;'>The Reflective Room</h1>
     </div>
