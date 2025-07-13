@@ -14,7 +14,7 @@ creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 
 # --- Google Sheet Access ---
-SHEET_ID = "1zIXpgEbipNfaDRdrgR5tSmTxmY-T5Cmyb8T4ojvRk2M"
+SHEET_ID = "1-BdTHzj1VWqz45G9kCwQ1cjZxzKZG9KP3SAaxYycUaM"
 WORKSHEET_NAME = "Submissions"
 
 try:
