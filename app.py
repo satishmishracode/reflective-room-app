@@ -53,12 +53,20 @@ try:
             submit_button = st.form_submit_button(label="Submit")
 
         if submit_button:
-            if name.strip() == "" or poem.strip() == "":
-                st.warning("Please enter both name and poem.")
-            else:
-                try:
+            
+                if name.strip() == "" or poem.strip() == "":
+                   st.warning("Please fill in both fields.")
+                else:
                     worksheet.append_row([name, poem])
-                    st.success("🎉 Poem submitted successfully!")
+                    st.balloons()
+                    st.success("✅ Poem submitted successfully!")
+                    st.markdown(f"""
+        ---
+        🕊️ **Thank you, _{name}_!**  
+        Your words have joined a growing constellation of reflections.  
+        Keep writing. Keep feeling. Keep shining. 🌙✨
+        """)
+
                 except Exception as e:
                     st.error(f"⚠️ Failed to submit poem: {e}")
 
