@@ -11,7 +11,7 @@ st.markdown(
     """
     <div style='display: flex; align-items: center; gap: 5px; justify-content: center; padding-bottom: 10px;'>
         <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='100'>
-        <h1 style='margin: 0;'>The Reflective Room</h1>
+        <h2 style='margin: 0;'>The Reflective Room</h2>
     </div>
     """,
     unsafe_allow_html=True
