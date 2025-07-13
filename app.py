@@ -16,7 +16,7 @@ creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
 client = gspread.authorize(creds)
 
 st.title("🪞 The Reflective Room — Debug Mode")
-st.subheader("📋 Verifying Google Sheets Access")
+st.subheader("📋 Verifying Google Sheets Access (via URL)")
 
 # Try listing all accessible spreadsheets
 try:
@@ -30,12 +30,12 @@ try:
 except Exception as e:
     st.error(f"❌ Error listing sheets: {e}")
 
-# Manual test to access a known sheet
-st.markdown("### 🔍 Manual Sheet Access Test")
+# Manual test to access sheet via URL
+st.markdown("### 🔍 Manual Sheet Access by URL")
 try:
-    sheet = client.open("The Reflective Room Submissions").sheet1
-    st.success("✅ Successfully opened the sheet.")
+    sheet = client.open_by_url("https://docs.google.com/spreadsheets/d/1kfAXeG867wu1f8sIKkGPG6wnFD2VSjxG/edit").sheet1
+    st.success("✅ Successfully accessed the sheet via URL.")
     data = sheet.get_all_values()
     st.write("📄 Sheet Content (first 2 rows):", data[:2])
 except Exception as e:
-    st.error(f"❌ Error accessing the sheet directly: {e}")
+    st.error(f"❌ Error accessing the sheet by URL: {e}")
