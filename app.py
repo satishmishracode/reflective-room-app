@@ -80,7 +80,7 @@ Keep writing. Keep feeling. Keep shining. 🌙✨
 
                     # ---------- OpenAI Reflection ----------
                     try:
-                        openai.api_key = st.secrets["openai_key"]
+                        openai.api_key = st.secrets["openai_key"]["openai_key"]
 
                         response = openai.chat.completions.create(
                             model="gpt-3.5-turbo",
