@@ -89,7 +89,7 @@ try:
                                 {"role": "user", "content": poem}
                             ],
                             temperature=0.7,
-                            max_tokens=150
+                            max_tokens=100
                         )
 
                         ai_reply = response.choices[0].message.content.strip()
