@@ -10,8 +10,8 @@ st.set_page_config(page_title="The Reflective Room", layout="centered")
 # ---------- Title with Logo ----------
 st.markdown(
     """
-    <div style='display: flex; align-items: center; gap: 5px; justify-content: center; padding-bottom: 10px;'>
-        <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='100'>
+    <div style='display: flex; align-items: center; gap: 10px; justify-content: center; padding-bottom: 10px;'>
+        <img src='https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png' width='90'>
         <h2 style='margin: 0;'>The Reflective Room</h2>
     </div>
     """,
@@ -71,27 +71,31 @@ try:
                     st.balloons()
                     st.success("✅ Poem submitted successfully!")
 
-                    # ------------- OpenAI Reflection ---------
-                    openai.api_key = st.secrets["openai"]["api_key"]
-
-                    with st.spinner("Reflecting on your poem..."):
-                        response = openai.ChatCompletion.create(
-                            model="gpt-3.5-turbo",
-                            messages=[
-                                {"role": "system", "content": "You are a poetic assistant offering kind, thoughtful reflections."},
-                                {"role": "user", "content": f"Please respond to this poem with a short poetic reflection or feedback:\n\n{poem}"}
-                            ]
-                        )
-                        ai_reply = response['choices'][0]['message']['content'].strip()
-
-                    st.markdown("---")
                     st.markdown(f"""
+---
 🕊️ **Thank you, _{name}_!**  
 Your words have joined a growing constellation of reflections.  
 Keep writing. Keep feeling. Keep shining. 🌙✨
 """)
-                    st.markdown("### ✨ AI Reflection on Your Poem")
-                    st.success(ai_reply)
+
+                    # ---------- OpenAI Reflection ----------
+                    try:
+                        openai.api_key = st.secrets["openai_key"]
+
+                        response = openai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a literary critic who writes poetic and thoughtful reflections on user-submitted poems."},
+                                {"role": "user", "content": f"Please reflect briefly on the following poem:\n\n{poem}"}
+                            ]
+                        )
+
+                        reflection = response.choices[0].message.content.strip()
+                        st.markdown("### ✨ AI Reflection")
+                        st.info(reflection)
+
+                    except Exception as e:
+                        st.warning(f"⚠️ Failed to generate reflection: {e}")
 
             except Exception as e:
                 st.error(f"⚠️ Failed to submit poem: {e}")
