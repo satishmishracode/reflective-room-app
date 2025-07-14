@@ -2,6 +2,7 @@ import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
+import openai
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -69,12 +70,29 @@ try:
                     worksheet.append_row([name, poem])
                     st.balloons()
                     st.success("✅ Poem submitted successfully!")
+
+                    # ------------- OpenAI Reflection ---------
+                    openai.api_key = st.secrets["openai"]["api_key"]
+
+                    with st.spinner("Reflecting on your poem..."):
+                        response = openai.ChatCompletion.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": "You are a poetic assistant offering kind, thoughtful reflections."},
+                                {"role": "user", "content": f"Please respond to this poem with a short poetic reflection or feedback:\n\n{poem}"}
+                            ]
+                        )
+                        ai_reply = response['choices'][0]['message']['content'].strip()
+
+                    st.markdown("---")
                     st.markdown(f"""
----
 🕊️ **Thank you, _{name}_!**  
 Your words have joined a growing constellation of reflections.  
 Keep writing. Keep feeling. Keep shining. 🌙✨
 """)
+                    st.markdown("### ✨ AI Reflection on Your Poem")
+                    st.success(ai_reply)
+
             except Exception as e:
                 st.error(f"⚠️ Failed to submit poem: {e}")
 
