@@ -1,8 +1,8 @@
 import streamlit as st
 import gspread
-import pandas as pd
-import openai
 from google.oauth2.service_account import Credentials
+import pandas as pd
+from openai import OpenAI
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -28,79 +28,76 @@ try:
     creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     client = gspread.authorize(creds)
 
+    # Open spreadsheet
     sheet_id = "1-BdTHzj1VWqz45G9kCwQ1cjZxzKZG9KP3SAaxYycUaM"
     spreadsheet = client.open_by_key(sheet_id)
+    st.success("✅ Connected to Google Sheet!")
+
+    # Locate "Submissions" worksheet
     worksheet_titles = [ws.title for ws in spreadsheet.worksheets()]
     target_title = next((title for title in worksheet_titles if title.strip().lower() == "submissions"), None)
 
     if not target_title:
-        st.error("❌ Worksheet named 'Submissions' not found.")
+        st.error("❌ Worksheet named 'Submissions' not found. Please check sheet tab name.")
     else:
         worksheet = spreadsheet.worksheet(target_title)
 
+        # Display total submissions
         st.markdown("### 📬 Submit Your Poem")
         st.info(f"📚 Total poems submitted: {len(worksheet.get_all_values()) - 1}")
 
+        # Display poet counts
         records = worksheet.get_all_records()
         if records:
             df = pd.DataFrame(records)
             poet_counts = df['name'].value_counts().reset_index()
             poet_counts.columns = ['Poet', 'Poems Submitted']
+
             st.subheader("🧾 Poem Count by Poet")
             st.dataframe(poet_counts)
 
-        # ---------- Poem Submission Form ----------
+        # Submission form
         with st.form(key="poem_form"):
             name = st.text_input("Your Name")
             poem = st.text_area("Your Poem")
             submit_button = st.form_submit_button(label="Submit")
 
         if submit_button:
-            if name.strip() == "" or poem.strip() == "":
-                st.warning("Please fill in both fields.")
-            else:
-                try:
+            try:
+                if name.strip() == "" or poem.strip() == "":
+                    st.warning("Please fill in both fields.")
+                else:
+                    # Append to sheet
                     worksheet.append_row([name, poem])
+                    st.success("✅ Poem submitted successfully!")
 
-                    # ---------- AI Reflection ----------
-                    openai.api_key = st.secrets["openai_key"]
+                    # AI Reflection
+                    with st.spinner("Generating AI reflection..."):
+                        client_ai = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
 
-                    prompt = f"""You are a literary critic and poet. Read this short poem and respond with:
-1. The most striking line (just the line).
-2. A two-line poetic reflection.
-3. A rating out of 10 based on emotional impact and originality.
+                        response = client_ai.chat.completions.create(
+                            model="gpt-3.5-turbo",
+                            messages=[
+                                {"role": "system", "content": (
+                                    "You are a poetry critic. Given a short poem, do two things:\n"
+                                    "1. Write an honest 2-line reflection in plain English (not poetic).\n"
+                                    "2. Give a rating on a scale of 1 to 10 based on creativity and emotional impact.\n"
+                                    "Reply in this format:\n"
+                                    "\"Reflection: ...\"\n"
+                                    "\"Rating: X/10\""
+                                )},
+                                {"role": "user", "content": poem}
+                            ],
+                            temperature=0.7,
+                            max_tokens=150
+                        )
 
-Poem:
-\"\"\"
-{poem}
-\"\"\"
-Respond in this format:
-Line: <line>
-Reflection: <2-line reflection>
-Rating: <number>/10"""
+                        ai_reply = response.choices[0].message.content.strip()
+                        st.markdown("### 🤖 AI Reflection")
+                        st.info(ai_reply)
 
-                    response = openai.chat.completions.create(
-                        model="gpt-3.5-turbo",
-                        messages=[{"role": "user", "content": prompt}],
-                        temperature=0.7
-                    )
-
-                    result = response.choices[0].message.content.strip().split("\n")
-
-                    # Display AI feedback
-                    st.success("✅ Poem submitted and reflected upon!")
-                    st.markdown("### ✨ AI Reflection")
-
-                    for line in result:
-                        if line.startswith("Line:"):
-                            st.markdown(f"**🔹 Highlight:** {line[5:].strip()}")
-                        elif line.startswith("Reflection:"):
-                            st.markdown(f"**🪞 Reflection:** {line[11:].strip()}")
-                        elif line.startswith("Rating:"):
-                            st.markdown(f"**🎯 Rating:** {line[7:].strip()}")
-
-                except Exception as e:
-                    st.error(f"⚠️ Failed to submit or reflect:\n\n{e}")
+            except Exception as e:
+                st.error(f"⚠️ Failed to submit or reflect:\n\n{e}")
 
 except Exception as e:
-    st.error(f"❌ Could not connect to Google Sheet:\n\n{e}")
+    st.error(f"❌ Could not connect to Google Sheet: {e}")
