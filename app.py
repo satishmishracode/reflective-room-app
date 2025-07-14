@@ -67,22 +67,28 @@ try:
 
                     # ---------- OpenAI Reflection ----------
                     openai.api_key = st.secrets["openai_key"]["openai_key"]
-                    response = openai.chat.completions.create(
+                    response = openai.ChatCompletion.create(
                         model="gpt-3.5-turbo",
                         messages=[
-                            {"role": "system", "content": "You are a poetry reviewer. Respond with a 2-line honest reflection of the poem, rate it out of 10, and highlight one most striking line."},
-                            {"role": "user", "content": poem}
+                            {
+                                "role": "system",
+                                "content": "You're a poetry critic. Give a brutally honest but gentle 2-line reflection, rate the poem on 10, and highlight the most striking line from the poem."
+                            },
+                            {
+                                "role": "user",
+                                "content": poem
+                            }
                         ],
-                        max_tokens=150,
+                        max_tokens=200,
                         temperature=0.7
                     )
 
                     reply = response.choices[0].message.content.strip()
-                    st.success("✅ Poem submitted successfully!")
+                    st.success("✅ Poem submitted and reflected!")
                     st.markdown(f"### ✨ Reflection\n{reply}")
 
                 except Exception as e:
-                    st.error(f"⚠️ Failed to generate reflection: {e}")
+                    st.error(f"⚠️ Failed to generate reflection:\n\n{e}")
 
 except Exception as e:
     st.error(f"❌ Could not connect to Google Sheet: {e}")
