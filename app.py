@@ -93,7 +93,7 @@ try:
                         )
 
                         ai_reply = response.choices[0].message.content.strip()
-                        st.markdown("### 🤖 AI Reflection")
+                        st.markdown("The Reflective Room Views")
                         st.info(ai_reply)
 
             except Exception as e:
