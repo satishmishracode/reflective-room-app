@@ -72,7 +72,7 @@ try:
                     st.success("✅ Poem submitted successfully!")
 
                     # AI Reflection
-                    with st.spinner("Generating AI reflection..."):
+                    with st.spinner("The Reflective Room is lost in your words "):
                         client_ai = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
 
                         response = client_ai.chat.completions.create(
