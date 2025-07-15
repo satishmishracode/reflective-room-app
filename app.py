@@ -152,7 +152,7 @@ poster_paths = []
 if submit:
     if not (name and poem and passkey):
         st.warning("Please fill all required fields including passkey.")
-    elif passkey != st.secrets["community"]:
+    elif passkey != st.secrets["community"]["passkey"]:
         st.error("❌ Invalid community passkey. Please contact admin.")
     else:
         try:
