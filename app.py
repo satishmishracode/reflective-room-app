@@ -80,7 +80,7 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
         h = bbox[3] - bbox[1]
         draw.text((img_width - w - margin, img_height - h - 60), name_text, font=name_font, fill="gray")
 
-    output_path = "/reflective_room_poem_poster.png"
+    output_path = "/tmp/reflective_room_poem_poster.png"
     image.save(output_path)
     return output_path
 
@@ -140,7 +140,7 @@ try:
 
             # Poster
             poster_path = generate_white_poster_with_logo(name, poem)
-            st.image(poster_path, caption="✨ Your Poetry Poster", use_column_width=True)
+            st.image("/tmp/reflective_room_poem_poster.png" caption="✨ Your Poetry Poster", use_column_width=True)
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
