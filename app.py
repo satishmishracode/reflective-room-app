@@ -32,20 +32,13 @@ scope = [
 
 # ---------- Poster Generation Function ----------
 def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
-    """
-    Creates a vertical white-background poster with the poem, poet name, and the Reflective Room logo.
-    Returns the file path of the generated poster image.
-    """
-    # Dimensions for Instagram-friendly poster
     img_width, img_height = 1080, 1350
     background_color = "white"
     text_color = "black"
 
-    # Create canvas
     image = Image.new("RGB", (img_width, img_height), color=background_color)
     draw = ImageDraw.Draw(image)
 
-    # Paste logo at top center
     logo_url = "https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png"
     try:
         resp = requests.get(logo_url)
@@ -56,7 +49,6 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
     except Exception:
         pass
 
-    # Load font
     font_path = "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"
     try:
         poem_font = ImageFont.truetype(font_path, 42)
@@ -65,7 +57,6 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
         poem_font = ImageFont.load_default()
         name_font = ImageFont.load_default()
 
-    # Wrap and draw poem text
     margin = 80
     top_text_y = 300
     wrapped = textwrap.fill(poem_text, width=30)
@@ -74,28 +65,30 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
         draw.text(((img_width - w) / 2, top_text_y), line, font=poem_font, fill=text_color)
         top_text_y += h + 10
 
-    # Draw poet name at bottom right
     if poet_name:
         name_text = f"— {poet_name}"
         w, h = draw.textsize(name_text, font=name_font)
         draw.text((img_width - w - margin, img_height - h - 60), name_text, font=name_font, fill="gray")
 
-    # Save poster
     output_path = "/mnt/data/reflective_room_poem_poster.png"
     image.save(output_path)
     return output_path
 
 # ---------- Main App Logic ----------
 try:
-    # Authorize Google Sheets
     creds_dict = st.secrets["gcp_service_account"]
     creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
     client = gspread.authorize(creds)
 
-    # Open Submissions sheet
     sheet_id = "1-BdTHzj1VWqz45G9kCwQ1cjZxzKZG9KP3SAaxYycUaM"
     spreadsheet = client.open_by_key(sheet_id)
-    worksheet = spreadsheet.worksheet("Submissions")
+
+    # Safe worksheet selection
+    target_title = next((ws.title for ws in spreadsheet.worksheets() if ws.title.strip().lower() == "submissions"), None)
+    if not target_title:
+        st.error("❌ Worksheet named 'Submissions' not found. Please check sheet tab name.")
+        st.stop()
+    worksheet = spreadsheet.worksheet(target_title)
     st.success("✅ Google Sheet connected!")
 
     # Display stats
@@ -121,13 +114,12 @@ try:
         if not name.strip() or not poem.strip():
             st.warning("Please fill in both fields.")
         else:
-            # Append to sheet
             worksheet.append_row([name, poem])
             st.success("✅ Poem submitted successfully!")
 
             # AI Reflection
             openai_client = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
-            with st.spinner("The Reflective Room is listening..."):
+            with st.spinner("🌀 The Reflective Room soul is listening..."):
                 resp = openai_client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
@@ -139,7 +131,7 @@ try:
                 )
             reflection = resp.choices[0].message.content.strip()
             st.markdown("---")
-            st.markdown("**The Reflective Room Thinks:**")
+            st.markdown("**🪞 The Reflective Room thinks:**")
             st.info(reflection)
 
             # Generate and display poster
