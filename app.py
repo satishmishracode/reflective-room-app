@@ -32,6 +32,10 @@ scope = [
 
 # ---------- Poster Generation Function ----------
 def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
+    """
+    Creates a vertical white-background poster with the poem, poet name, and the Reflective Room logo.
+    Returns the file path of the generated poster image.
+    """
     img_width, img_height = 1080, 1350
     background_color = "white"
     text_color = "black"
@@ -39,6 +43,7 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
     image = Image.new("RGB", (img_width, img_height), color=background_color)
     draw = ImageDraw.Draw(image)
 
+    # Paste logo
     logo_url = "https://raw.githubusercontent.com/satishmishracode/reflective-room-app/main/The_Reflective_Room_Logo.png"
     try:
         resp = requests.get(logo_url)
@@ -60,14 +65,19 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
     margin = 80
     top_text_y = 300
     wrapped = textwrap.fill(poem_text, width=30)
+
     for line in wrapped.split("\n"):
-        w, h = draw.textsize(line, font=poem_font)
+        bbox = draw.textbbox((0, 0), line, font=poem_font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
         draw.text(((img_width - w) / 2, top_text_y), line, font=poem_font, fill=text_color)
         top_text_y += h + 10
 
     if poet_name:
         name_text = f"— {poet_name}"
-        w, h = draw.textsize(name_text, font=name_font)
+        bbox = draw.textbbox((0, 0), name_text, font=name_font)
+        w = bbox[2] - bbox[0]
+        h = bbox[3] - bbox[1]
         draw.text((img_width - w - margin, img_height - h - 60), name_text, font=name_font, fill="gray")
 
     output_path = "/mnt/data/reflective_room_poem_poster.png"
@@ -82,16 +92,9 @@ try:
 
     sheet_id = "1-BdTHzj1VWqz45G9kCwQ1cjZxzKZG9KP3SAaxYycUaM"
     spreadsheet = client.open_by_key(sheet_id)
-
-    # Safe worksheet selection
-    target_title = next((ws.title for ws in spreadsheet.worksheets() if ws.title.strip().lower() == "submissions"), None)
-    if not target_title:
-        st.error("❌ Worksheet named 'Submissions' not found. Please check sheet tab name.")
-        st.stop()
-    worksheet = spreadsheet.worksheet(target_title)
+    worksheet = spreadsheet.worksheet("Submissions")
     st.success("✅ Google Sheet connected!")
 
-    # Display stats
     st.markdown("### 📬 Submit Your Poem")
     total = len(worksheet.get_all_values()) - 1
     st.info(f"📚 Total poems submitted: {total}")
@@ -130,11 +133,12 @@ try:
                     temperature=0.7
                 )
             reflection = resp.choices[0].message.content.strip()
+
             st.markdown("---")
-            st.markdown("**🪞 The Reflective Room thinks:**")
+            st.markdown("🔮 **The Reflective Room thinks:**")
             st.info(reflection)
 
-            # Generate and display poster
+            # Poster
             poster_path = generate_white_poster_with_logo(name, poem)
             st.image(poster_path, caption="✨ Your Poetry Poster", use_column_width=True)
 
