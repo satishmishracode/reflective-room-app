@@ -9,6 +9,7 @@ from PIL import Image, ImageDraw, ImageFont
 import tempfile
 import os
 import textwrap
+import plotly.graph_objs as go
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -46,7 +47,12 @@ def get_worksheet():
 def get_data():
     worksheet = get_worksheet()
     data = worksheet.get_all_records()
-    return pd.DataFrame(data) if data else pd.DataFrame(columns=["name","poem","poem_title","instagram_handle","reflection_score"])
+    columns = ["name", "poem", "poem_title", "instagram_handle", "reflection_score"]
+    df = pd.DataFrame(data)
+    for col in columns:
+        if col not in df.columns:
+            df[col] = ""
+    return df
 
 # ---------- Poster Generation Function ----------
 def generate_white_poster_with_logo(poet_name: str, poem_text: str, poem_title: str, insta_handle: str) -> str:
@@ -136,6 +142,10 @@ st.markdown(" ", unsafe_allow_html=True)  # Spacer
 # ------------ Poetry Submission ------------
 st.markdown("### 📝 Submit Your Poem")
 
+if "submission_successful" not in st.session_state:
+    st.session_state["submission_successful"] = False
+    st.session_state["submission_data"] = {}
+
 with st.form(key="poem_form"):
     name = st.text_input("Your Name")
     poem_title = st.text_input("Poem Title (optional)")
@@ -144,15 +154,13 @@ with st.form(key="poem_form"):
     passkey = st.text_input("Community Passkey", type="password")
     submit = st.form_submit_button("Submit")
 
-submission_successful = False
 reflection_ai = ""
 reflection_score = 0
-poster_paths = []
 
 if submit:
     if not (name and poem and passkey):
         st.warning("Please fill all required fields including passkey.")
-    elif passkey != st.secrets["community"]["passkey"]:
+    elif passkey != st.secrets["community_passkey"]:
         st.error("❌ Invalid community passkey. Please contact admin.")
     else:
         try:
@@ -180,30 +188,29 @@ if submit:
                 reflection_score
             ])
             st.success("✅ Poem submitted successfully!")
-            submission_successful = True
+            st.session_state["submission_successful"] = True
+            st.session_state["submission_data"] = {
+                "name": name,
+                "poem_title": poem_title,
+                "poem": poem,
+                "insta_handle": insta_handle
+            }
+            st.session_state["reflection_ai"] = reflection_ai
         except Exception as e:
             st.error(f"❌ Failed to submit: {e}")
 
-# ------------ Show Features with Collapsibles ------------
-
 df = get_data()
 
-# Pie Chart of Poem Counts ("Constellation of Voices")
+# Pie Chart of Poem Counts ("Constellation of Voices") - Plotly version
 with st.expander("🌌 Constellation of Voices (Click to show)"):
     if not df.empty:
         poet_counts = df['name'].value_counts()
         st.write(f"**Total poems submitted:** {poet_counts.sum()}")
-        st.plotly_chart(
-            {
-                "data": [{
-                    "labels": poet_counts.index.tolist(),
-                    "values": poet_counts.values.tolist(),
-                    "type": "pie"
-                }],
-                "layout": {"title": "Poems by Poet"}
-            },
-            use_container_width=True
+        fig = go.Figure(
+            data=[go.Pie(labels=poet_counts.index, values=poet_counts.values, textinfo="label+percent", hole=0.3)],
         )
+        fig.update_layout(showlegend=True, margin=dict(l=20, r=20, t=40, b=20))
+        st.plotly_chart(fig, use_container_width=True)
 
 # Reflection Points Leaderboard Table
 with st.expander("🌟 Reflection Points Leaderboard (Click to show)"):
@@ -213,37 +220,38 @@ with st.expander("🌟 Reflection Points Leaderboard (Click to show)"):
         st.table(leaderboard)
 
 # ------------ AI Reflection (only after submission) ------------
-if submission_successful:
+if st.session_state.get("submission_successful", False):
     st.markdown("---")
     st.markdown("🔮 **The Reflective Room thinks:**")
-    st.info(reflection_ai or "No reflection generated.")
+    st.info(st.session_state.get("reflection_ai", "No reflection generated."))
     st.markdown("---")
-    st.markdown("### 🖼️ Your Poetry Poster(s)")
+    st.markdown("### 🖼️ Generate Your Poetry Poster(s)")
 
-    # Handle long poems: split if >11 lines
-    lines = poem.split("\n")
-    chunk_size = 11
-    poem_chunks = [ "\n".join(lines[i:i+chunk_size]) for i in range(0, len(lines), chunk_size) ]
-    poster_paths = []
-    for idx, chunk in enumerate(poem_chunks):
-        poster_path = generate_white_poster_with_logo(name, chunk, poem_title, insta_handle)
-        poster_paths.append(poster_path)
-        st.image(poster_path, caption=f"Poetry Poster {idx+1}", use_column_width=True)
-    # Download all as zip
-    import zipfile
-    from io import BytesIO
-    if len(poster_paths) > 0:
-        zip_buffer = BytesIO()
-        with zipfile.ZipFile(zip_buffer, "w") as zipf:
-            for path in poster_paths:
-                with open(path, "rb") as f:
-                    zipf.writestr(os.path.basename(path), f.read())
-        st.download_button(
-            label=f"Download All Poster{'s' if len(poster_paths)>1 else ''} (ZIP)",
-            data=zip_buffer.getvalue(),
-            file_name="ReflectiveRoom_PoetryPosters.zip",
-            mime="application/zip"
-        )
+    if st.button("Generate Poetry Poster(s)"):
+        submission = st.session_state["submission_data"]
+        lines = submission["poem"].split("\n")
+        chunk_size = 11
+        poem_chunks = [ "\n".join(lines[i:i+chunk_size]) for i in range(0, len(lines), chunk_size) ]
+        poster_paths = []
+        for idx, chunk in enumerate(poem_chunks):
+            poster_path = generate_white_poster_with_logo(submission["name"], chunk, submission["poem_title"], submission["insta_handle"])
+            poster_paths.append(poster_path)
+            st.image(poster_path, caption=f"Poetry Poster {idx+1}", use_column_width=True)
+        # Download all as zip
+        import zipfile
+        from io import BytesIO
+        if len(poster_paths) > 0:
+            zip_buffer = BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w") as zipf:
+                for path in poster_paths:
+                    with open(path, "rb") as f:
+                        zipf.writestr(os.path.basename(path), f.read())
+            st.download_button(
+                label=f"Download All Poster{'s' if len(poster_paths)>1 else ''} (ZIP)",
+                data=zip_buffer.getvalue(),
+                file_name="ReflectiveRoom_PoetryPosters.zip",
+                mime="application/zip"
+            )
 
 st.markdown("---")
 st.caption("Crafted with ❤️ for poets, writers, and seekers.")
