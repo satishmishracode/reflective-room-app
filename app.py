@@ -33,7 +33,7 @@ scope = [
 ]
 
 # ---------- Poster Generation (Square) ----------
-def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=12):
+def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=15):
     IMG_WIDTH, IMG_HEIGHT = 1080, 1080
     BACKGROUND_COLOR = "white"
     TEXT_COLOR = "black"
