@@ -33,7 +33,7 @@ scope = [
 ]
 
 # ---------- Poster Generation (Square) ----------
-def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=15):
+def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=11):
     IMG_WIDTH, IMG_HEIGHT = 1080, 1080
     BACKGROUND_COLOR = "white"
     TEXT_COLOR = "black"
@@ -97,7 +97,7 @@ def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=15
             draw.text((IMG_WIDTH - w - MARGIN, IMG_HEIGHT - h - 60), name_text, font=name_font, fill="gray")
 
         # Save poster
-        poster_path = f"/tmp/reflective_room_poem_poster_{i+1}.png"
+        poster_path = f"/mnt/data/reflective_room_poem_poster_{i+1}.png"
         image.save(poster_path)
         poster_paths.append(poster_path)
 
@@ -129,11 +129,15 @@ try:
     with st.form("poem_form"):
         name = st.text_input("Your Name")
         poem = st.text_area("Your Poem")
+        passkey = st.text_input("Reflective Room Passkey", type="password")
         submit = st.form_submit_button("Submit")
 
     if submit:
+        correct_passkey = st.secrets["community"]["passkey"]
         if not name.strip() or not poem.strip():
             st.warning("Please fill in both fields.")
+        elif passkey != correct_passkey:
+            st.error("Incorrect community passkey. Please ask the admin for the latest passcode.")
         else:
             worksheet.append_row([name, poem])
             st.success("✅ Poem submitted successfully!")
