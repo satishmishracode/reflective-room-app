@@ -164,7 +164,7 @@ try:
             # Display all posters
             st.subheader("✨ Your Poetry Poster(s)")
             for path in poster_paths:
-                st.image(path, use_column_width=True)
+                st.image(path, use_container_width=True)
 
             # Offer a ZIP download of all posters
             zip_buffer = BytesIO()
