@@ -10,6 +10,7 @@ from openai import OpenAI
 import zipfile
 import os
 import matplotlib.pyplot as plt
+import re
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -97,11 +98,21 @@ def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=11
             draw.text((IMG_WIDTH - w - MARGIN, IMG_HEIGHT - h - 60), name_text, font=name_font, fill="gray")
 
         # Save poster
-        poster_path = f"/tmp/reflective_room_poem_poster_{i+1}.png"
+        poster_path = f"/mnt/data/reflective_room_poem_poster_{i+1}.png"
         image.save(poster_path)
         poster_paths.append(poster_path)
 
     return poster_paths
+
+# ---------- Extract numeric score from AI reflection ----------
+def extract_rating(reflection_text):
+    match = re.search(r'(\d{1,2})\s*\/\s*10', reflection_text)
+    if match:
+        return int(match.group(1))
+    match = re.search(r'(\d{1,2})\s*out of\s*10', reflection_text, re.IGNORECASE)
+    if match:
+        return int(match.group(1))
+    return None
 
 # ---------- Main App Logic ----------
 try:
@@ -112,7 +123,6 @@ try:
     sheet_id = "1-BdTHzj1VWqz45G9kCwQ1cjZxzKZG9KP3SAaxYycUaM"
     spreadsheet = client.open_by_key(sheet_id)
     worksheet = spreadsheet.worksheet("Submissions")
-    st.success("✅ Google Sheet connected!")
 
     st.markdown("### 📬 Submit Your Poem")
     total = len(worksheet.get_all_values()) - 1
@@ -124,7 +134,7 @@ try:
         counts = df['name'].value_counts().reset_index()
         counts.columns = ['Poet', 'Poems Submitted']
 
-        # --------- Pie chart as "Constellation of Voices" ---------
+        # Pie chart as "Constellation of Voices"
         st.subheader("🌌 Constellation of Voices")
         fig, ax = plt.subplots(figsize=(5, 5))
         ax.pie(counts['Poems Submitted'], labels=counts['Poet'], autopct='%1.0f%%', startangle=140)
@@ -132,8 +142,14 @@ try:
         plt.tight_layout()
         st.pyplot(fig)
         st.caption("Each poet’s contribution to The Reflective Room.")
-
         st.dataframe(counts)
+
+        # Reflection Points Table
+        if "Reflection Score" in df.columns:
+            reflection_points = df.groupby('name')["Reflection Score"].sum().reset_index()
+            reflection_points.columns = ["Poet", "Reflection Points"]
+            st.subheader("🌟 Reflection Points Leaderboard")
+            st.dataframe(reflection_points)
 
     with st.form("poem_form"):
         name = st.text_input("Your Name")
@@ -148,9 +164,6 @@ try:
         elif passkey != correct_passkey:
             st.error("Incorrect community passkey. Please ask the admin for the latest passcode.")
         else:
-            worksheet.append_row([name, poem])
-            st.success("✅ Poem submitted successfully!")
-
             openai_client = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
             with st.spinner("🪞 The Reflective Room soul is listening..."):
                 response = openai_client.chat.completions.create(
@@ -163,6 +176,13 @@ try:
                     temperature=0.7
                 )
             reflection = response.choices[0].message.content.strip()
+            score = extract_rating(reflection)
+
+            # If this is your first time, check header row
+            # If your Google Sheet has columns: Name | Poem | Reflection Score, you're all set
+            worksheet.append_row([name, poem, score])
+
+            st.success("✅ Poem submitted successfully!")
             st.markdown("---")
             st.markdown("**The Reflective Room Thinks:**")
             st.info(reflection)
