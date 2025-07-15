@@ -3,13 +3,13 @@ import gspread
 from google.oauth2.service_account import Credentials
 import pandas as pd
 import textwrap
-import math
 from PIL import Image, ImageDraw, ImageFont
 from io import BytesIO
 import requests
 from openai import OpenAI
 import zipfile
 import os
+import matplotlib.pyplot as plt
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -97,7 +97,7 @@ def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=11
             draw.text((IMG_WIDTH - w - MARGIN, IMG_HEIGHT - h - 60), name_text, font=name_font, fill="gray")
 
         # Save poster
-        poster_path = f"/tmp/reflective_room_poem_poster_{i+1}.png"
+        poster_path = f"/mnt/data/reflective_room_poem_poster_{i+1}.png"
         image.save(poster_path)
         poster_paths.append(poster_path)
 
@@ -123,7 +123,16 @@ try:
         df = pd.DataFrame(records)
         counts = df['name'].value_counts().reset_index()
         counts.columns = ['Poet', 'Poems Submitted']
-        st.subheader("🧾 Poem Count by Poet")
+
+        # --------- Pie chart as "Constellation of Voices" ---------
+        st.subheader("🌌 Constellation of Voices")
+        fig, ax = plt.subplots(figsize=(5, 5))
+        ax.pie(counts['Poems Submitted'], labels=counts['Poet'], autopct='%1.0f%%', startangle=140)
+        ax.axis('equal')
+        plt.tight_layout()
+        st.pyplot(fig)
+        st.caption("Each poet’s contribution to The Reflective Room.")
+
         st.dataframe(counts)
 
     with st.form("poem_form"):
@@ -164,7 +173,7 @@ try:
             # Display all posters
             st.subheader("✨ Your Poetry Poster(s)")
             for path in poster_paths:
-                st.image(path, use_container_width=True)
+                st.image(path, use_column_width=True)
 
             # Offer a ZIP download of all posters
             zip_buffer = BytesIO()
