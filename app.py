@@ -97,7 +97,7 @@ def generate_square_posters(poet_name: str, poem_text: str, max_lines_per_img=11
             draw.text((IMG_WIDTH - w - MARGIN, IMG_HEIGHT - h - 60), name_text, font=name_font, fill="gray")
 
         # Save poster
-        poster_path = f"/mnt/data/reflective_room_poem_poster_{i+1}.png"
+        poster_path = f"/tmp/reflective_room_poem_poster_{i+1}.png"
         image.save(poster_path)
         poster_paths.append(poster_path)
 
