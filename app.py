@@ -80,7 +80,7 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str) -> str:
         h = bbox[3] - bbox[1]
         draw.text((img_width - w - margin, img_height - h - 60), name_text, font=name_font, fill="gray")
 
-    output_path = "/mnt/data/reflective_room_poem_poster.png"
+    output_path = "/reflective_room_poem_poster.png"
     image.save(output_path)
     return output_path
 
