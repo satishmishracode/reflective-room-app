@@ -8,8 +8,8 @@ import requests
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
 from openai import OpenAI
-import tempfile
 import os
+import re
 
 # ---------- Page Setup ----------
 st.set_page_config(page_title="The Reflective Room", layout="centered")
@@ -46,16 +46,11 @@ scope = [
 ]
 
 # ---------- Helper: Poster Generation ----------
-def generate_white_poster_with_logo(poet_name: str, poem_text: str, img_number=1) -> str:
-    """
-    Creates a vertical white-background poster with the poem, poet name, and the Reflective Room logo.
-    Returns the file path of the generated poster image (in /tmp).
-    """
+def generate_white_poster_with_logo(poet_name: str, poem_text: str, img_number=1, poem_title: str = "", instagram_handle: str = "") -> str:
     img_width, img_height = 1080, 1080
     background_color = "white"
     text_color = "black"
 
-    # Create canvas
     image = Image.new("RGB", (img_width, img_height), color=background_color)
     draw = ImageDraw.Draw(image)
 
@@ -76,13 +71,25 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str, img_number=1
     try:
         poem_font = ImageFont.truetype(font_path, 46)
         name_font = ImageFont.truetype(font_bold_path, 36)
+        title_font = ImageFont.truetype(font_bold_path, 38)
+        ig_font = ImageFont.truetype(font_path, 32)
     except Exception:
         poem_font = ImageFont.load_default()
         name_font = ImageFont.load_default()
+        title_font = ImageFont.load_default()
+        ig_font = ImageFont.load_default()
 
-    # Wrap and draw poem text (centered)
     margin = 90
     top_text_y = 260
+
+    # Draw Poem Title (if present)
+    if poem_title.strip():
+        title_text = poem_title.strip()
+        w, h = draw.textbbox((0, 0), title_text, font=title_font)[2:]
+        draw.text(((img_width - w) / 2, top_text_y - 80), title_text, font=title_font, fill="#554488")
+        top_text_y += 10
+
+    # Wrap and draw poem text (centered)
     wrapper = textwrap.TextWrapper(width=32)
     wrapped = wrapper.wrap(poem_text)
     for line in wrapped:
@@ -95,6 +102,12 @@ def generate_white_poster_with_logo(poet_name: str, poem_text: str, img_number=1
         name_text = f"— {poet_name}"
         w, h = draw.textbbox((0, 0), name_text, font=name_font)[2:]
         draw.text((img_width - w - margin, img_height - h - 70), name_text, font=name_font, fill="#888888")
+
+    # Draw Instagram handle at bottom left
+    if instagram_handle.strip():
+        ig_text = instagram_handle.strip()
+        w, h = draw.textbbox((0, 0), ig_text, font=ig_font)[2:]
+        draw.text((margin, img_height - h - 65), ig_text, font=ig_font, fill="#b795eb")
 
     # Save poster (always unique file)
     poster_path = f"/tmp/reflective_room_poem_poster_{img_number}.png"
@@ -111,7 +124,7 @@ try:
     spreadsheet = client.open_by_key(sheet_id)
     worksheet = spreadsheet.worksheet("Submissions")
 
-    # Display stats (no connection message!)
+    # Display stats
     st.markdown("""
         <div style='margin-top:1em;'></div>
         <div style='background:#f3f1fa; border-radius:12px; padding:18px 10px 12px 18px; margin-bottom:18px; box-shadow:0 1px 5px #e4def7;'>
@@ -139,8 +152,6 @@ try:
         st.markdown("<b>Poem Count Table</b>", unsafe_allow_html=True)
         st.table(counts.reset_index().rename(columns={'index': 'Poet', 'name': 'Poems Submitted'}))
 
-        # Reflection points leaderboard table (next section, after AI reflection!)
-
     # --- Poem Submission Form ---
     st.markdown("---")
     with st.form(key="poem_form"):
@@ -149,20 +160,22 @@ try:
             unsafe_allow_html=True
         )
         name = st.text_input("Your Name")
+        poem_title = st.text_input("Poem Title (optional)")
         poem = st.text_area("Your Poem")
+        instagram_handle = st.text_input("Instagram Handle (optional)", placeholder="@yourhandle")
         passkey = st.text_input("Reflective Room Passkey", type="password")
         submit = st.form_submit_button("Submit")
 
-    # --- Submit Logic ---
     reflection_points_this_poem = 0
     posters_to_download = []
     if submit:
         if not name.strip() or not poem.strip():
             st.warning("Please fill in all fields.")
-        elif passkey != st.secrets["community"]["passkey"]:
+        elif passkey != st.secrets["community_passkey"]["passkey"]:
             st.error("❌ Incorrect passkey. Please contact your community admin.")
         else:
-            worksheet.append_row([name, poem])
+            # Add row with blanks for reflection_points (to be updated after reflection)
+            worksheet.append_row([name, poem, '', poem_title, instagram_handle])
             st.success("✅ Poem submitted successfully!")
 
             # ---- AI Reflection ----
@@ -180,7 +193,6 @@ try:
             reflection = resp.choices[0].message.content.strip()
 
             # --- Extract reflection points (out of 10) ---
-            import re
             match = re.search(r'Rating: ?(\d+)/10', reflection)
             if match:
                 reflection_points_this_poem = int(match.group(1))
@@ -200,29 +212,32 @@ try:
                 start = i * chunk_size
                 end = start + chunk_size
                 chunk = "\n".join(poem_lines[start:end])
-                poster_path = generate_white_poster_with_logo(name, chunk, img_number=i+1)
+                poster_path = generate_white_poster_with_logo(
+                    name, chunk, img_number=i+1,
+                    poem_title=poem_title if i == 0 else "",
+                    instagram_handle=instagram_handle if i == (total_images-1) else ""
+                )
                 poster_paths.append(poster_path)
                 st.image(poster_path, caption=f"✨ Poetry Poster {i+1}", use_column_width=True)
                 posters_to_download.append(poster_path)
+
+            # Update reflection points for this poem (in the sheet, last submitted row)
+            ws_vals = worksheet.get_all_values()
+            header = ws_vals[0]
+            rows = ws_vals[1:]
+            col_idx = header.index("reflection_points") + 1 if "reflection_points" in header else len(header) + 1
+            worksheet.update_cell(len(ws_vals), col_idx, str(reflection_points_this_poem))
 
     # --- Reflection Points Leaderboard ---
     if records:
         df = pd.DataFrame(records)
         if "reflection_points" not in df.columns:
-            df["reflection_points"] = 0  # For initial runs
+            df["reflection_points"] = 0
 
         # Add new reflection points if poem was just submitted
         if submit and reflection_points_this_poem > 0:
-            # Reload worksheet with all records, add points to last poem
             ws_vals = worksheet.get_all_values()
             header = ws_vals[0]
-            rows = ws_vals[1:]
-            if "reflection_points" not in header:
-                worksheet.update_cell(1, len(header)+1, "reflection_points")
-                header.append("reflection_points")
-                for idx, row in enumerate(rows, 2):
-                    worksheet.update_cell(idx, len(header), "0")
-            worksheet.update_cell(len(ws_vals), len(header), str(reflection_points_this_poem))
             df = pd.DataFrame(worksheet.get_all_records())
 
         leaderboard = df.groupby("name")["reflection_points"].sum().reset_index().sort_values("reflection_points", ascending=False)
@@ -234,13 +249,19 @@ try:
 
     # --- Download Posters Button ---
     if posters_to_download:
-        with open(posters_to_download[0], "rb") as f:
-            btn = st.download_button(
-                label=f"Download All Poster{'s' if len(posters_to_download)>1 else ''} (ZIP)",
-                data=f.read(),
-                file_name="ReflectiveRoom_PoemPoster.png",
-                mime="image/png"
-            )
+        import zipfile
+        from io import BytesIO
+        zip_buffer = BytesIO()
+        with zipfile.ZipFile(zip_buffer, "w") as zipf:
+            for idx, path in enumerate(posters_to_download):
+                zipf.write(path, os.path.basename(path))
+        zip_buffer.seek(0)
+        st.download_button(
+            label=f"Download All Poster{'s' if len(posters_to_download)>1 else ''} (ZIP)",
+            data=zip_buffer,
+            file_name="ReflectiveRoom_PoemPosters.zip",
+            mime="application/zip"
+        )
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
