@@ -6,3 +6,4 @@ google-auth
 openai>=1.0.0
 requests
 Pillow 
+matplotlib
