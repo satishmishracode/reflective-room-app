@@ -171,7 +171,7 @@ try:
     if submit:
         if not name.strip() or not poem.strip():
             st.warning("Please fill in all fields.")
-        elif passkey != st.secrets["community_passkey"]["passkey"]:
+        elif passkey != st.secrets["community"]["passkey"]:
             st.error("❌ Incorrect passkey. Please contact your community admin.")
         else:
             # Add row with blanks for reflection_points (to be updated after reflection)
