@@ -140,7 +140,7 @@ try:
 
             # Poster
             poster_path = generate_white_poster_with_logo(name, poem)
-            st.image("/tmp/reflective_room_poem_poster.png", caption="✨ Your Poetry Poster", use_column_width=True)
+            st.image("/tmp/reflective_room_poem_poster.png", caption="✨ Your Poetry Poster", use_container_width=True)
 
 except Exception as e:
     st.error(f"❌ Error: {e}")
