@@ -280,74 +280,107 @@ with st.expander("🎙️ Voice of Your Poem (Generate Audio)"):
 
 # =============== Apollo & Lyra Council (OpenAI + Gemini) ===============
 with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Council)"):
-    st.markdown("Experience a poetic dialogue between Apollo (structure, reason) and Lyra (lyric, intuition) as they reflect on your poem and offer a divine score.")
+    st.markdown(
+        "Experience a poetic dialogue between Apollo (structure, reason) and Lyra (lyric, intuition), with your name woven in."
+    )
 
     if st.session_state.get("submission_successful", False):
         submitted_poem = st.session_state["submission_data"].get("poem", "")
-        apollo_reflection = st.session_state.get("reflection_ai", "")
+        poet_name = st.session_state["submission_data"].get("name", "Poet")
+        apollo_turns = []
+        lyra_turns = []
 
-        # 2. Lyra (Gemini) responds
-        try:
+        # Apollo (OpenAI)
+        openai_client = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
+        def ask_apollo(prompt):
+            response = openai_client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "system", "content": prompt}],
+                max_tokens=100,
+                temperature=0.7
+            )
+            return response.choices[0].message.content.strip()
+
+        # Lyra (Gemini)
+        def ask_lyra(apollo_text, dialogue_history):
             import google.generativeai as genai
-
             genai.configure(api_key=st.secrets["gemini"]["api_key"])
+            prompt = (
+                f"You are Lyra, poetic muse. Continue this poetic dialogue with Apollo (wise critic). "
+                f"Respond to {poet_name} and Apollo in 2 poetic lines, offering both insight and feeling. "
+                f"Here is the ongoing dialogue so far:\n"
+                f"{dialogue_history}\n\n"
+                f"Apollo just said: {apollo_text}\n"
+                "Your reply (add a rating out of 10, optionally referring to the poet by name):"
+            )
+            model = genai.GenerativeModel('models/gemini-1.5-flash-latest')
+            response = model.generate_content(prompt)
+            return response.text.strip()
 
-            # Try various model names
-            available_models = []
-            try:
-                models = genai.list_models()
-                available_models = [m.name for m in models]
-            except Exception as e:
-                available_models = []
+        # Dialogue sequence: [Apollo, Lyra, Apollo, Lyra, Apollo, Lyra]
+        dialogue = []
+        dialogue_history = f"{poet_name} has shared a poem:\n{submitted_poem}\n\n"
+        # Turn 1: Apollo
+        prompt_apollo1 = (
+            f"You are Apollo, wise poetic critic. The poet, {poet_name}, has submitted this poem:\n{submitted_poem}\n"
+            "Begin a poetic dialogue with Lyra, giving your first impression in 2 lines (be warm but honest), addressing the poet by name. End with a rating out of 10."
+        )
+        apollo_1 = ask_apollo(prompt_apollo1)
+        dialogue.append(("Apollo", apollo_1))
+        dialogue_history += f"Apollo: {apollo_1}\n"
 
-            tried_models = ['models/gemini-pro', 'gemini-pro', 'chat-bison-001', 'text-bison-001']
-            lyra_text = ""
-            used_model = None
+        # Turn 2: Lyra
+        lyra_1 = ask_lyra(apollo_1, dialogue_history)
+        dialogue.append(("Lyra", lyra_1))
+        dialogue_history += f"Lyra: {lyra_1}\n"
 
-            for candidate in tried_models + available_models:
-                try:
-                    lyra_model = genai.GenerativeModel(candidate)
-                    lyra_prompt = (
-                        f"You are Lyra, a poetic muse. Apollo (the wise critic) just reflected on this poem:\n"
-                        f"---\nPOEM:\n{submitted_poem}\n---\n"
-                        f"APOLLO'S REFLECTION:\n{apollo_reflection}\n---\n"
-                        "Now, as Lyra, give your own honest, lyrical reflection (2 lines) and suggest a score out of 10, different from Apollo's if you wish."
-                    )
-                    response = lyra_model.generate_content(lyra_prompt)
-                    lyra_text = response.text.strip()
-                    used_model = candidate
-                    break
-                except Exception as e:
-                    continue
+        # Turn 3: Apollo
+        prompt_apollo2 = (
+            f"You are Apollo. Lyra has just responded as follows:\n{lyra_1}\n"
+            f"Continue the poetic dialogue. Give your second reflection (2 lines, be insightful, speak to {poet_name}), include a (rating/10)."
+        )
+        apollo_2 = ask_apollo(prompt_apollo2)
+        dialogue.append(("Apollo", apollo_2))
+        dialogue_history += f"Apollo: {apollo_2}\n"
 
-            if not lyra_text:
-                raise Exception(f"No compatible Gemini model found for your API key. Models available: {available_models}")
+        # Turn 4: Lyra
+        lyra_2 = ask_lyra(apollo_2, dialogue_history)
+        dialogue.append(("Lyra", lyra_2))
+        dialogue_history += f"Lyra: {lyra_2}\n"
 
-        except Exception as e:
-            lyra_text = f"⚠️ Lyra could not generate a response: {e}"
+        # (Optional 5th turn)
+        prompt_apollo3 = (
+            f"You are Apollo. Lyra has just said:\n{lyra_2}\n"
+            f"Conclude the dialogue in 1 or 2 poetic lines, summarizing the poem's impact for {poet_name}, and ending with your final rating/10."
+        )
+        apollo_3 = ask_apollo(prompt_apollo3)
+        dialogue.append(("Apollo", apollo_3))
+        dialogue_history += f"Apollo: {apollo_3}\n"
 
-        def extract_score(text):
-            match = re.search(r"(\d+)/10", text)
-            if match:
-                try:
-                    return int(match.group(1))
-                except Exception:
-                    return None
-            return None
+        # Lyra summary/closing (optional)
+        lyra_3 = ask_lyra(apollo_3, dialogue_history)
+        dialogue.append(("Lyra", lyra_3))
+        dialogue_history += f"Lyra: {lyra_3}\n"
 
-        apollo_score = extract_score(apollo_reflection)
-        lyra_score = extract_score(lyra_text)
-        scores = [s for s in [apollo_score, lyra_score] if s is not None]
-        divine_score = round(sum(scores) / len(scores), 1) if scores else "N/A"
-
+        # Show the dialogue as a chat
         st.markdown("---")
-        st.markdown("**🌞 Apollo says:**")
-        st.info(apollo_reflection)
-        st.markdown("**🌙 Lyra replies:**")
-        st.info(lyra_text)
-        if used_model:
-            st.caption(f"Lyra used Gemini model: `{used_model}`")
+        for turn, speech in dialogue:
+            if turn == "Apollo":
+                st.markdown(f"🌞 **Apollo:**")
+                st.info(speech)
+            else:
+                st.markdown(f"🌙 **Lyra:**")
+                st.info(speech)
+
+        # Extract all scores and average them
+        def get_scores(text):
+            return [int(s) for s in re.findall(r"(\d+)/10", text)]
+        all_scores = []
+        for _, speech in dialogue:
+            all_scores.extend(get_scores(speech))
+        divine_score = round(sum(all_scores)/len(all_scores), 1) if all_scores else "N/A"
         st.markdown(f"**✨ Divine Score:** `{divine_score} / 10`")
+
     else:
         st.info("Please submit a poem to experience Apollo & Lyra's poetic council.")
 
