@@ -124,7 +124,11 @@ def extract_score(reflection: str):
             return 0
     return 0
 
+# ========= GEMINI MODEL PICKER ==========
 def gemini_model_picker():
+    """
+    Returns the best available generative text model from Gemini API, preferring new, supported models.
+    """
     import google.generativeai as genai
     try:
         preferred = [
@@ -135,6 +139,7 @@ def gemini_model_picker():
         ]
         models = genai.list_models()
         model_names = [m.name for m in models if "generateContent" in getattr(m, "supported_generation_methods", [])]
+
         for model in preferred:
             if model in model_names:
                 return model
@@ -303,74 +308,66 @@ with st.expander("🎙️ Voice of Your Poem (Generate Audio)"):
 
 # =============== Apollo & Lyra Council (OpenAI + Gemini) ===============
 with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Banter Council)"):
-    st.markdown("Experience a multi-turn, witty and personal poetic exchange between Apollo (structure, reason, references) and Lyra (lyric, intuition, mischief), with English poets’ names woven into the banter.")
+    st.markdown("Experience a multi-turn, witty and personal poetic exchange between Apollo (wisdom, wit) and Lyra (muse, mischief), referencing English poets and the poet by name.")
 
     if st.session_state.get("submission_successful", False):
         submitted_poem = st.session_state["submission_data"].get("poem", "")
         poet_name = st.session_state["submission_data"].get("name", "")
         apollo_client = OpenAI(api_key=st.secrets["openai_key"]["openai_key"])
 
-        # Apollo opens the discussion (first turn)
-        apollo_prompt_1 = (
-            f"You are Apollo, Greek god of poetry and wisdom in the 21st century. Address {poet_name} directly. Give a poetic, insightful critique (2-3 lines), reference a classic English poet (eg. Wordsworth, Shelley, Eliot), and offer a score out of 10. End with an invitation for Lyra to respond."
-            f"\n\nPOEM:\n{submitted_poem}"
+        # Apollo's opening
+        apollo_1_prompt = (
+            f"You are Apollo, Greek god of poetry and wisdom, in 21st-century India, speaking directly to {poet_name}. "
+            f"Give a poetic, insightful critique (2-3 lines), reference a classic English poet (e.g. Eliot, Yeats), and score out of 10. End by calling on Lyra for her view."
+            f"\n\nPOEM:\n{submitted_poem[:600]}"
         )
-        apollo_resp_1 = apollo_client.chat.completions.create(
+        apollo_1 = apollo_client.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=[
-                {"role": "system", "content": apollo_prompt_1}
-            ],
+            messages=[{"role": "system", "content": apollo_1_prompt}],
             max_tokens=90,
-            temperature=0.88
-        )
-        apollo_text_1 = apollo_resp_1.choices[0].message.content.strip()
+            temperature=0.9
+        ).choices[0].message.content.strip()
 
-        # Lyra's first response (Gemini)
+        # Lyra's playful reply
         try:
             import google.generativeai as genai
             genai.configure(api_key=st.secrets["gemini"]["api_key"])
             lyra_model_name = gemini_model_picker()
             lyra_model = genai.GenerativeModel(lyra_model_name)
-            lyra_prompt_1 = (
-                f"You are Lyra, Greek goddess of poetry, wit and intuition. Apollo just reflected on {poet_name}'s poem:\n"
-                f"---\nPOEM:\n{submitted_poem}\n---\n"
-                f"APOLLO'S REFLECTION:\n{apollo_text_1}\n---\n"
-                "Now, reply in 2-3 poetic lines, reference a famous English poet (different from Apollo’s), playfully challenge Apollo, address {poet_name} by name, and give your own score out of 10 (can be different). Invite Apollo to one more round."
+            lyra_1_prompt = (
+                f"You are Lyra, Greek goddess muse of poetry and mischief. Apollo has just reflected on {poet_name}'s poem:\n"
+                f"POEM: {submitted_poem[:600]}\nAPOLLO: {apollo_1}\n\n"
+                f"Reply in 2-3 poetic lines, reference a different English poet, playfully tease Apollo, address {poet_name}, and give your own score out of 10."
             )
-            lyra_resp_1 = lyra_model.generate_content(lyra_prompt_1)
-            lyra_text_1 = lyra_resp_1.text.strip()
+            lyra_1 = lyra_model.generate_content(lyra_1_prompt).text.strip()
         except Exception as e:
-            lyra_text_1 = f"⚠️ Lyra could not generate a response: {e}"
+            lyra_1 = f"⚠️ Lyra could not generate a response: {e}"
 
-        # Apollo's comeback (second turn)
-        apollo_prompt_2 = (
-            f"You are Apollo, Greek god of poetry, responding to Lyra's playful and insightful remarks about {poet_name}'s poem. "
-            f"Reference another famous English poet (different from last time), answer Lyra's challenge with wit, and give a fresh score out of 10. End with a friendly jab at Lyra."
+        # Apollo's comeback
+        apollo_2_prompt = (
+            f"You are Apollo, Greek god of poetry. Lyra has just replied with playful banter. Respond to Lyra's remarks about {poet_name}'s poem, reference another English poet, keep it poetic (2-3 lines), and give a new score out of 10. End by inviting Lyra to close."
         )
-        apollo_resp_2 = apollo_client.chat.completions.create(
+        apollo_2 = apollo_client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
-                {"role": "system", "content": apollo_prompt_2},
-                {"role": "user", "content": f"POEM: {submitted_poem}\nLYRA: {lyra_text_1}"}
+                {"role": "system", "content": apollo_2_prompt},
+                {"role": "user", "content": f"LYRA: {lyra_1}"}
             ],
             max_tokens=90,
             temperature=0.9
-        )
-        apollo_text_2 = apollo_resp_2.choices[0].message.content.strip()
+        ).choices[0].message.content.strip()
 
-        # Lyra's closing (second turn)
+        # Lyra's closing words
         try:
-            lyra_prompt_2 = (
-                f"You are Lyra, goddess muse of poetry, wit and intuition. Apollo just made a witty, competitive response about {poet_name}'s poem.\n"
-                f"---\nAPOLLO: {apollo_text_2}\n---\n"
-                f"Reply in 2-3 poetic lines, reference yet another English poet, cheer on {poet_name} directly, and give your final score out of 10. Sign off the banter with a flourish."
+            lyra_2_prompt = (
+                f"You are Lyra, poetic muse. Apollo just made a witty response about {poet_name}'s poem. "
+                f"Reply in poetic, clever 2-3 lines, reference yet another English poet, and give your final score out of 10. Sign off the banter."
             )
-            lyra_resp_2 = lyra_model.generate_content(lyra_prompt_2)
-            lyra_text_2 = lyra_resp_2.text.strip()
+            lyra_2 = lyra_model.generate_content(lyra_2_prompt).text.strip()
         except Exception as e:
-            lyra_text_2 = f"⚠️ Lyra could not generate a response: {e}"
+            lyra_2 = f"⚠️ Lyra could not generate a response: {e}"
 
-        # Collect and average all scores
+        # Collect scores
         def extract_score(text):
             match = re.search(r"(\d+)/10", text)
             if match:
@@ -381,12 +378,27 @@ with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Banter Council)"):
             return None
 
         all_scores = [
-            extract_score(apollo_text_1),
-            extract_score(lyra_text_1),
-            extract_score(apollo_text_2),
-            extract_score(lyra_text_2)
+            extract_score(apollo_1),
+            extract_score(lyra_1),
+            extract_score(apollo_2),
+            extract_score(lyra_2)
         ]
         valid_scores = [s for s in all_scores if s is not None]
         divine_score = round(sum(valid_scores) / len(valid_scores), 1) if valid_scores else "N/A"
 
-        # --- Display the poetic banter ---
+        st.markdown("---")
+        st.markdown("**🌞 Apollo opens:**")
+        st.info(apollo_1)
+        st.markdown("**🌙 Lyra replies:**")
+        st.info(lyra_1)
+        st.markdown("**🌞 Apollo counters:**")
+        st.info(apollo_2)
+        st.markdown("**🌙 Lyra closes:**")
+        st.info(lyra_2)
+        st.markdown(f"**✨ Divine Score:** `{divine_score} / 10`")
+
+    else:
+        st.info("Please submit a poem to experience Apollo & Lyra's poetic council.")
+
+st.markdown("---")
+st.caption("Crafted with ❤️ for poets, writers, and seekers.")
