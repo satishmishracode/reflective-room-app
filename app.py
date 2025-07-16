@@ -278,5 +278,63 @@ with st.expander("🎙️ Voice of Your Poem (Generate Audio)"):
         else:
             st.warning("Please paste or write your poem above before generating audio.")
 
+# ========= WHISPERS OF APOLLO & LYRA (POETIC COUNCIL) ==========
+with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Council)"):
+    st.markdown("Experience a poetic dialogue between Apollo (structure, reason) and Lyra (lyric, intuition) as they reflect on your poem and offer a divine score.")
+
+    if st.session_state.get("submission_successful", False):
+        submitted_poem = st.session_state["submission_data"].get("poem", "")
+        # 1. Apollo speaks (OpenAI GPT, already done above)
+        apollo_reflection = st.session_state.get("reflection_ai", "")
+
+        # 2. Lyra (Gemini) responds
+        try:
+            import google.generativeai as genai
+
+            # Load Gemini API key from secrets
+            genai.configure(api_key=st.secrets["gemini"]["api_key"])
+            lyra_model = genai.GenerativeModel('gemini-pro')
+            
+            # Lyra receives both the poem and Apollo's response
+            lyra_prompt = (
+                f"You are Lyra, a poetic muse. Apollo (the wise critic) just reflected on this poem:\n"
+                f"---\nPOEM:\n{submitted_poem}\n---\n"
+                f"APOLLO'S REFLECTION:\n{apollo_reflection}\n---\n"
+                "Now, as Lyra, give your own honest, lyrical reflection (2 lines) and suggest a score out of 10, different from Apollo's if you wish."
+            )
+
+            lyra_response = lyra_model.generate_content(lyra_prompt)
+            lyra_text = lyra_response.text.strip()
+        except Exception as e:
+            lyra_text = f"⚠️ Lyra could not generate a response: {e}"
+
+        # Extract scores from both reflections
+        import re
+        def extract_score(text):
+            match = re.search(r"(\d+)/10", text)
+            if match:
+                try:
+                    return int(match.group(1))
+                except Exception:
+                    return None
+            return None
+
+        apollo_score = extract_score(apollo_reflection)
+        lyra_score = extract_score(lyra_text)
+        # Compute Divine Score (average, ignoring None)
+        scores = [s for s in [apollo_score, lyra_score] if s is not None]
+        divine_score = round(sum(scores) / len(scores), 1) if scores else "N/A"
+
+        # Show the dialogue
+        st.markdown("---")
+        st.markdown("**🌞 Apollo says:**")
+        st.info(apollo_reflection)
+        st.markdown("**🌙 Lyra replies:**")
+        st.info(lyra_text)
+        st.markdown(f"**✨ Divine Score:** `{divine_score} / 10`")
+
+    else:
+        st.info("Please submit a poem to experience Apollo & Lyra's poetic council.")
+
 st.markdown("---")
 st.caption("Crafted with ❤️ for poets, writers, and seekers.")
