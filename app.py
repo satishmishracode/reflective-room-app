@@ -124,23 +124,30 @@ def extract_score(reflection: str):
             return 0
     return 0
 
-# ========= GEMINI MODEL PICKER =========
+# ========= GEMINI MODEL PICKER ==========
 def gemini_model_picker():
     """
-    Returns the first available generative text model from Gemini API, or None if not found.
+    Returns the best available generative text model from Gemini API, preferring new, supported models.
     """
     import google.generativeai as genai
     try:
+        preferred = [
+            "gemini-1.5-flash",
+            "models/gemini-1.5-flash",
+            "gemini-1.5-pro",
+            "models/gemini-1.5-pro"
+        ]
         models = genai.list_models()
-        for m in models:
-            if "generateContent" in getattr(m, "supported_generation_methods", []):
-                return m.name
-        for fallback in ["gemini-pro", "models/gemini-pro", "chat-bison-001", "text-bison-001"]:
-            try:
-                genai.GenerativeModel(fallback)
-                return fallback
-            except Exception:
-                continue
+        model_names = [m.name for m in models if "generateContent" in getattr(m, "supported_generation_methods", [])]
+
+        for model in preferred:
+            if model in model_names:
+                return model
+        for m in model_names:
+            if all(x not in m for x in ["vision", "bison", "pro-vision", "1.0"]):
+                return m
+        if model_names:
+            return model_names[0]
     except Exception:
         pass
     return None
@@ -179,7 +186,7 @@ try:
                     ai_resp = openai_client.chat.completions.create(
                         model="gpt-3.5-turbo",
                         messages=[
-                            {"role": "system", "content": "You are Apollo, the Greek god of poetry, now in the 21st century and aware of the modern poetic landscape. Provide a 2-line honest, literary reflection and a poetic score out of 10. Be as wise as the likes of T.S. Eliot or Auden."},
+                            {"role": "system", "content": "You are Apollo, a Greek god of poetry and wisdom in the 21st century, who references classic English poets. Offer a 2-3 line poetic critique and a score out of 10 for this poem."},
                             {"role": "user", "content": poem}
                         ],
                         max_tokens=80,
@@ -318,7 +325,8 @@ with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Council)"):
 
             lyra_model = genai.GenerativeModel(lyra_model_name)
             lyra_prompt_1 = (
-                f"You are Lyra, a witty, intuitive Greek muse of poetry in the 21st century. Apollo (the god of poetry) just reflected on this poem by {poet_name}:\n"
+                f"You are Lyra, a witty, intuitive Greek muse of poetry in the 21st century. "
+                f"Apollo (the god of poetry) just reflected on this poem by {poet_name}:\n"
                 f"---\nPOEM:\n{submitted_poem}\n---\n"
                 f"APOLLO'S REFLECTION:\n{apollo_text_1}\n---\n"
                 "Now, in 2-3 lines, provide your own lyrical reflection, tease Apollo, reference an English poet if you wish, give your own score out of 10 (different from Apollo's if you wish), and address the poet by name. Invite Apollo for a closing banter."
@@ -330,7 +338,7 @@ with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Council)"):
             lyra_text_1 = f"⚠️ Lyra could not generate a response: {e}"
             used_model = None
 
-        # Extract scores for average
+        # Extract scores and compute divine score
         def extract_score(text):
             match = re.search(r"(\d+)/10", text)
             if match:
