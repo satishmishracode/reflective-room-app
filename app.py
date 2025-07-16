@@ -293,7 +293,7 @@ with st.expander("🌞🌙 Whispers of Apollo & Lyra (Poetic Council)"):
 
             # Load Gemini API key from secrets
             genai.configure(api_key=st.secrets["gemini"]["api_key"])
-            lyra_model = genai.GenerativeModel('gemini-pro')
+            lyra_model = genai.GenerativeModel('models/gemini-pro')
             
             # Lyra receives both the poem and Apollo's response
             lyra_prompt = (
